@@ -1,79 +1,72 @@
-import React from "react";
-import { View, Text, TextInput, TouchableOpacity, Image } from "react-native";
+import React from 'react';
+import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
 
-export default function LoginScreen() {
+export default function login() {
   return (
     <View className="flex-1 bg-teal-700">
       {/* Already a User text */}
-      <View className="mt-16 items-center">
-        <Text className="text-white text-lg">Already a User?</Text>
-      </View>
-
+      <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
+          <Text className="text-white text-lg text-right p-4">Already a User?</Text>
+        </TouchableOpacity>
       {/* White Card */}
-      <View className="flex-1 mt-10 bg-white rounded-t-[40px] p-6">
+      <View className="mt-10 flex-1 rounded-t-[40px] bg-white p-6">
         {/* Title */}
-        <Text className="text-center text-lg font-semibold mb-6">
-          Login to continue
-        </Text>
+        <Text className="mb-6 text-center text-lg font-semibold">Login to continue</Text>
 
         {/* Phone Input */}
-        <View className="flex-row space-x-2 mb-4">
-          <View className="flex-row items-center border border-gray-300 rounded-lg px-3 py-2 w-[80px] justify-center">
-            <Text className="text-gray-700 font-medium">+251</Text>
+        <View className="mb-4 flex-row space-x-2">
+          <View className="w-[80px] flex-row items-center justify-center rounded-lg border border-gray-300 px-3 py-2">
+            <Text className="font-medium text-gray-700">+251</Text>
           </View>
           <TextInput
             placeholder="Enter phone number"
             keyboardType="phone-pad"
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2"
           />
         </View>
 
         {/* Create Account Button */}
-        <TouchableOpacity className="bg-teal-700 py-3 rounded-lg mb-4">
-          <Text className="text-center text-white font-semibold">
-            Create Account
-          </Text>
+        <TouchableOpacity className="mb-4 rounded-lg bg-teal-700 py-3">
+          <Text className="text-center font-semibold text-white">Create Account</Text>
         </TouchableOpacity>
 
         {/* Continue With */}
-        <Text className="text-center text-gray-500 mb-4">
-          or continue with
-        </Text>
+        <Text className="mb-4 text-center text-gray-500">or continue with</Text>
 
         {/* Social Buttons */}
-        <View className="flex-row justify-center space-x-4 mb-6">
-          <TouchableOpacity className="p-3 bg-gray-100 rounded-lg">
+        <View className="mb-6 flex-row justify-center space-x-4">
+          <TouchableOpacity className="rounded-lg bg-gray-100 p-3">
             <Image
               source={{
-                uri: "https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg",
+                uri: 'https://imgs.search.brave.com/JcZoc4RsUy1VvRIMg7kDEyaa3nbA4k0G8gdk_fd6SJ4/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9wbHVz/cG5nLmNvbS9pbWct/cG5nL2dvb2dsZS1s/b2dvLXBuZy1yZXZp/c2VkLWdvb2dsZS1s/b2dvLTE2MDAucG5n',
               }}
-              className="w-6 h-6"
+              className="h-6 w-6"
             />
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-3 bg-gray-100 rounded-lg">
+          <TouchableOpacity className="rounded-lg bg-gray-100 p-3">
             <Image
               source={{
-                uri: "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg",
+                uri: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg',
               }}
-              className="w-6 h-6"
+              className="h-6 w-6"
             />
           </TouchableOpacity>
 
-          <TouchableOpacity className="p-3 bg-gray-100 rounded-lg">
+          <TouchableOpacity className="rounded-lg bg-gray-100 p-3">
             <Image
               source={{
-                uri: "https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png",
+                uri: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png',
               }}
-              className="w-6 h-6"
+              className="h-6 w-6"
             />
           </TouchableOpacity>
         </View>
 
         {/* Terms */}
         <Text className="text-center text-xs text-gray-400">
-          By signing up, I agree to the Terms of service and privacy policy,
-          including usage of cookies
+          By signing up, I agree to the Terms of service and privacy policy, including usage of
+          cookies
         </Text>
       </View>
     </View>
