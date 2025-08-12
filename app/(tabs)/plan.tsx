@@ -3,8 +3,8 @@ import React from 'react'
 
 export default function plan() {
   return (
-    <View className="text-red-500">
-      <Text className='bg-pink text-4xl '>Hello, World!</Text>
+    <View>
+      <Text className='bg-pink text-4xl text-center '>Coming soon!</Text>
     </View>
   )
 }

@@ -1,75 +1,82 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import { Ionicons } from '@expo/vector-icons';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const HomeScreen = () => {
+  const caloriePercent = (780 / 2600) * 100;
 
-export default function HomeScreen() {
+  const nutrientData = [
+    { name: 'Proteins', value: 26, goal: 120, color: 'green' },
+    { name: 'Carbs', value: 50, goal: 200, color: 'yellow' },
+    { name: 'Fats', value: 100, goal: 100, color: 'red' },
+    { name: 'Fiber', value: 26, goal: 120, color: 'blue' },
+  ];
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
-}
+    <View className="flex-1 bg-white p-6 pt-14">
+      {/* Header */}
+      <View className="flex-row justify-between items-center mb-6">
+        <Text className="text-xl font-bold">
+          Hello <Text className="underline">Yonas</Text>!
+        </Text>
+        <TouchableOpacity className="bg-teal-600 px-4 py-1 rounded-full">
+          <Text className="text-white font-semibold">Today</Text>
+        </TouchableOpacity>
+      </View>
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+      <Text className="text-gray-500 mb-4 text-lg">Your tracker</Text>
+
+      {/* Circular Progress */}
+      <View className="items-center mb-8">
+        <AnimatedCircularProgress
+          size={160}
+          width={12}
+          fill={caloriePercent}
+          tintColor="#fb7185"
+          backgroundColor="#fcd6db"
+          rotation={0}
+        >
+          {() => (
+            <View className="items-center">
+              <Text className="font-semibold text-lg">Calories</Text>
+              <Text className="text-gray-500">780 of 2600kcal</Text>
+            </View>
+          )}
+        </AnimatedCircularProgress>
+      </View>
+
+      {/* Nutrients */}
+      {nutrientData.map((item) => {
+        const percent = (item.value / item.goal) * 100;
+
+        return (
+          <View key={item.name} className="mb-4">
+            <View className="flex-row justify-between mb-1">
+              <Text className="font-medium">{item.name}</Text>
+              <Text className="text-gray-500">{item.value}g /{item.goal}g</Text>
+            </View>
+            <View className="w-full h-2 rounded-full bg-gray-200">
+              <View
+                className="h-full rounded-full"
+                style={{
+                  width: `${percent > 100 ? 100 : percent}%`,
+                  backgroundColor: item.color,
+                }}
+              />
+            </View>
+          </View>
+        );
+      })}
+
+      {/* Floating Camera Button */}
+      <View className="absolute bottom-20 left-0 right-0 items-center">
+        <TouchableOpacity className="bg-teal-600 p-4 rounded-full shadow-lg">
+          <Ionicons name="camera" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+export default HomeScreen;
