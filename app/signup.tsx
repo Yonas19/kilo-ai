@@ -1,74 +1,81 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { auth } from '@/constants/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useRouter } from 'expo-router';
 
-export default function signup() {
+export default function Signup() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    if (!email || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill all fields');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      Alert.alert('Success', 'Account created!');
+      router.replace('/onboarding'); // navigate to main app
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <View className="flex-1 bg-teal-700">
-      {/* Already a User text */}
-      <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
-          <Text className="text-white text-lg text-right p-4">New User?</Text>
-        </TouchableOpacity>
-      {/* White Card */}
-      <View className="mt-10 flex-1 rounded-t-[40px] bg-white p-6">
-        {/* Title */}
-        <Text className="mb-6 text-center text-lg font-semibold">Let's create your Account</Text>
+    <View className="flex-1 bg-teal-700 justify-center px-6">
+      <Text className="text-white text-3xl font-bold mb-8 text-center">Create Account</Text>
 
-        {/* Phone Input */}
-        <View className="mb-4 flex-row space-x-2">
-          <View className="w-[80px] flex-row items-center justify-center rounded-lg border border-gray-300 px-3 py-2">
-            <Text className="font-medium text-gray-700">+251</Text>
-          </View>
-          <TextInput
-            placeholder="Enter phone number"
-            keyboardType="phone-pad"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2"
-          />
-        </View>
+      <TextInput
+        value={email}
+        onChangeText={setEmail}
+        placeholder="Email"
+        keyboardType="email-address"
+        className="bg-white rounded-xl px-4 py-3 mb-4 text-gray-800"
+      />
 
-        {/* Create Account Button */}
-        <TouchableOpacity className="mb-4 rounded-lg bg-teal-700 py-3">
-          <Text className="text-center font-semibold text-white">Login</Text>
-        </TouchableOpacity>
+      <TextInput
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Password"
+        secureTextEntry
+        className="bg-white rounded-xl px-4 py-3 mb-4 text-gray-800"
+      />
 
-        {/* Continue With */}
-        <Text className="mb-4 text-center text-gray-500">or continue with</Text>
+      <TextInput
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        placeholder="Confirm Password"
+        secureTextEntry
+        className="bg-white rounded-xl px-4 py-3 mb-6 text-gray-800"
+      />
 
-        {/* Social Buttons */}
-        <View className="mb-6 flex-row justify-center space-x-4">
-          <TouchableOpacity className="rounded-lg bg-gray-100 p-3">
-            <Image
-              source={{
-                uri: 'https://imgs.search.brave.com/JcZoc4RsUy1VvRIMg7kDEyaa3nbA4k0G8gdk_fd6SJ4/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9wbHVz/cG5nLmNvbS9pbWct/cG5nL2dvb2dsZS1s/b2dvLXBuZy1yZXZp/c2VkLWdvb2dsZS1s/b2dvLTE2MDAucG5n',
-              }}
-              className="h-6 w-6"
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity className="rounded-lg bg-gray-100 p-3">
-            <Image
-              source={{
-                uri: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg',
-              }}
-              className="h-6 w-6"
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity className="rounded-lg bg-gray-100 p-3">
-            <Image
-              source={{
-                uri: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png',
-              }}
-              className="h-6 w-6"
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Terms */}
-        <Text className="text-center text-xs text-gray-400">
-          By signing up, I agree to the Terms of service and privacy policy, including usage of
-          cookies
+      <TouchableOpacity
+        onPress={handleSignup}
+        className="bg-white rounded-xl py-3 mb-4"
+        disabled={loading}
+      >
+        <Text className="text-teal-700 font-semibold text-center text-lg">
+          {loading ? 'Signing up...' : 'Sign Up'}
         </Text>
-      </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => router.push('/login')} className="mt-4">
+        <Text className="text-white text-center underline">
+          Already have an account? Sign in
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }

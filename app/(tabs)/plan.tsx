@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import React from 'react'
 
 export default function plan() {
@@ -9,4 +9,3 @@ export default function plan() {
   )
 }
 
-const styles = StyleSheet.create({})

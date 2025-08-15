@@ -1,128 +1,111 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// app/(ai-chat)/index.tsx
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import axios from 'axios';
 
-export default function ChatScreen({ navigation }) {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+export default function AIChatScreen() {
+  const [question, setQuestion] = useState('');
+  const [messages, setMessages] = useState<{ type: 'user' | 'ai'; text: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const router = useRouter();
 
-  // Simulated AI response
-  const simulateAIResponse = (userMessage) => {
-    setIsGenerating(true);
+  const handleAsk = async () => {
+    if (!question.trim()) return;
 
-    // Add "Generating..." message placeholder
-    const loadingMessage = {
-      id: Date.now() + 1,
-      text: 'Generating...',
-      sender: 'ai',
-      loading: true,
-    };
-    setMessages((prev) => [...prev, loadingMessage]);
+    const userMessage = { type: 'user', text: question };
+    setMessages([userMessage]);
+    setQuestion('');
+    setLoading(true);
 
-    setTimeout(() => {
-      // Remove loading
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.loading ? { ...msg, text: getSimulatedReply(userMessage), loading: false } : msg
-        )
+    try {
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: question }],
+          max_tokens: 150,
+          temperature: 0.5,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer YOUR_OPENAI_API_KEY`,
+          },
+        }
       );
-      setIsGenerating(false);
-    }, 2000);
+
+      const aiMessage = { type: 'ai', text: response.data.choices[0].message.content.trim() };
+      setMessages([userMessage, aiMessage]);
+    } catch (error) {
+      console.error(error);
+      setMessages([
+        userMessage,
+        { type: 'ai', text: 'Error: Unable to get a response. Try again.' },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSend = () => {
-    if (input.trim() === '') return;
-
-    const userMessage = {
-      id: Date.now(),
-      text: input,
-      sender: 'user',
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    simulateAIResponse(input);
-    setInput('');
-  };
-
-  const getSimulatedReply = (message) => {
-    // Basic fake reply logic (replace with OpenAI later)
-    return `You said: "${message}". That's interesting! 🤖`;
-  };
+  useEffect(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View className="flex-row items-center px-4 pt-12 pb-4">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text className="ml-4 text-xl font-semibold">Ria</Text>
-      </View>
-
-      {/* Chat Messages */}
-      <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 80 }}
-      >
-        {messages.map((msg) => (
-          <View
-            key={msg.id}
-            className={`my-2 max-w-[80%] rounded-xl px-4 py-2 ${
-              msg.sender === 'user'
-                ? 'bg-teal-100 self-end'
-                : 'bg-gray-200 self-start'
-            }`}
+      <View className="flex-1 bg-white p-4">
+        {/* Header with Back Button */}
+        <View className="flex-row items-center mb-4">
+          <TouchableOpacity
+            className="p-2 bg-gray-200 rounded"
+            onPress={() => router.back()}
           >
-            <Text className="text-gray-800">
-              {msg.loading ? <LoadingDots /> : msg.text}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
+            <Text className="text-lg">← Back</Text>
+          </TouchableOpacity>
+          <Text className="ml-4 text-xl font-bold">AI Chat</Text>
+        </View>
 
-      {/* Input */}
-      <View className="absolute bottom-4 left-4 right-4 flex-row items-center px-4 py-2 bg-teal-50 rounded-full shadow">
-        <TextInput
-          className="flex-1 text-gray-800"
-          placeholder="Talk to AI"
-          placeholderTextColor="#94a3b8"
-          value={input}
-          onChangeText={setInput}
-        />
-        <TouchableOpacity onPress={handleSend} disabled={isGenerating}>
-          <Ionicons
-            name="send"
-            size={20}
-            color={isGenerating ? '#94a3b8' : '#0f766e'}
+        {/* Scrollable Messages */}
+        <ScrollView ref={scrollRef} className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
+          {messages.map((msg, index) => (
+            <View
+              key={index}
+              className={`my-2 p-3 max-w-[80%] rounded-xl ${
+                msg.type === 'user' ? 'bg-teal-700 self-end' : 'bg-gray-200 self-start'
+              }`}
+            >
+              <Text className={`${msg.type === 'user' ? 'text-white' : 'text-gray-800'}`}>
+                {msg.text}
+              </Text>
+            </View>
+          ))}
+          {loading && (
+            <ActivityIndicator size="small" color="#14b8a6" className="self-start mt-2" />
+          )}
+        </ScrollView>
+
+        {/* Input */}
+        <View className="flex-row items-center">
+          <TextInput
+            className="flex-1 border border-gray-300 rounded-full p-3 mr-2"
+            placeholder="Type your question..."
+            value={question}
+            onChangeText={setQuestion}
           />
-        </TouchableOpacity>
+          <TouchableOpacity
+            className="bg-teal-700 p-3 rounded-full"
+            onPress={handleAsk}
+            disabled={loading}
+          >
+            <Text className="text-white font-semibold">{loading ? '...' : 'Send'}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
-
-// Loading animation component
-const LoadingDots = () => {
-  const [dots, setDots] = useState('');
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((prev) => (prev.length >= 3 ? '' : prev + '.'));
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  return <Text className="text-gray-500">Generating{dots}</Text>;
-};
