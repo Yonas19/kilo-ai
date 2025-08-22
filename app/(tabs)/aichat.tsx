@@ -1,110 +1,77 @@
-// app/(ai-chat)/index.tsx
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'expo-router';
-import axios from 'axios';
+import { sendToGemini, ChatMessage } from '../../lib/geminiChat';
 
 export default function AIChatScreen() {
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<{ type: 'user' | 'ai'; text: string }[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-  const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const handleAsk = async () => {
+  // Auto-scroll down when new messages come in
+  useEffect(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
+
+  const handleSend = async () => {
     if (!question.trim()) return;
 
-    const userMessage = { type: 'user', text: question };
-    setMessages([userMessage]);
+    const userMsg: ChatMessage = { role: 'user', content: question };
+    setMessages((prev) => [...prev, userMsg]);
     setQuestion('');
     setLoading(true);
 
-    try {
-      const response = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-3.5-turbo',
-          messages: [{ role: 'user', content: question }],
-          max_tokens: 150,
-          temperature: 0.5,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer YOUR_OPENAI_API_KEY`,
-          },
-        }
-      );
-
-      const aiMessage = { type: 'ai', text: response.data.choices[0].message.content.trim() };
-      setMessages([userMessage, aiMessage]);
-    } catch (error) {
-      console.error(error);
-      setMessages([
-        userMessage,
-        { type: 'ai', text: 'Error: Unable to get a response. Try again.' },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    const aiReply = await sendToGemini([...messages, userMsg]);
+    setMessages((prev) => [...prev, { role: 'ai', content: aiReply }]);
+    setLoading(false);
   };
-
-  useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View className="flex-1 bg-white p-4">
-        {/* Header with Back Button */}
-        <View className="flex-row items-center mb-4">
-          <TouchableOpacity
-            className="p-2 bg-gray-200 rounded"
-            onPress={() => router.back()}
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={{ padding: 16 }}
+        className="flex-1"
+      >
+        {messages.map((msg, idx) => (
+          <View
+            key={idx}
+            className={`mb-3 p-3 rounded-2xl max-w-[80%] ${
+              msg.role === 'user'
+                ? 'self-end bg-teal-600'
+                : 'self-start bg-gray-200'
+            }`}
           >
-            <Text className="text-lg">← Back</Text>
-          </TouchableOpacity>
-          <Text className="ml-4 text-xl font-bold">AI Chat</Text>
-        </View>
+            <Text className={msg.role === 'user' ? 'text-white' : 'text-black'}>
+              {msg.content}
+            </Text>
+          </View>
+        ))}
 
-        {/* Scrollable Messages */}
-        <ScrollView ref={scrollRef} className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
-          {messages.map((msg, index) => (
-            <View
-              key={index}
-              className={`my-2 p-3 max-w-[80%] rounded-xl ${
-                msg.type === 'user' ? 'bg-teal-700 self-end' : 'bg-gray-200 self-start'
-              }`}
-            >
-              <Text className={`${msg.type === 'user' ? 'text-white' : 'text-gray-800'}`}>
-                {msg.text}
-              </Text>
-            </View>
-          ))}
-          {loading && (
-            <ActivityIndicator size="small" color="#14b8a6" className="self-start mt-2" />
-          )}
-        </ScrollView>
+        {loading && (
+          <View className="self-start bg-gray-200 p-3 rounded-2xl">
+            <ActivityIndicator size="small" color="#333" />
+          </View>
+        )}
+      </ScrollView>
 
-        {/* Input */}
-        <View className="flex-row items-center">
-          <TextInput
-            className="flex-1 border border-gray-300 rounded-full p-3 mr-2"
-            placeholder="Type your question..."
-            value={question}
-            onChangeText={setQuestion}
-          />
-          <TouchableOpacity
-            className="bg-teal-700 p-3 rounded-full"
-            onPress={handleAsk}
-            disabled={loading}
-          >
-            <Text className="text-white font-semibold">{loading ? '...' : 'Send'}</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-row items-center border-t border-gray-200 p-2">
+        <TextInput
+          value={question}
+          onChangeText={setQuestion}
+          placeholder="Ask me anything..."
+          className="flex-1 bg-gray-100 p-3 rounded-xl"
+        />
+        <TouchableOpacity
+          onPress={handleSend}
+          disabled={loading}
+          className="ml-2 bg-teal-600 px-4 py-3 rounded-xl"
+        >
+          <Text className="text-white font-semibold">Send</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );

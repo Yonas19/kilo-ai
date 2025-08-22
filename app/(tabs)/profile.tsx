@@ -1,168 +1,154 @@
+// app/(tabs)/profile.tsx
+import { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { db, auth } from "@/constants/firebase";
+import { auth, db } from "@/constants/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-const ProfileScreen = () => {
-  const [userName, setUserName] = useState<string>("Loading...");
+export default function ProfileScreen() {
+  const [userData, setUserData] = useState<any>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Mock data for now
-  const caloriesEaten = 1450;
-  const dailyTarget = 2000;
-  const estimatedWeeklyChange = ((caloriesEaten - dailyTarget) * 7) / 7700; // 7700 kcal ~ 1kg
-
-  const reminders = [
-    { time: "8:00 AM", task: "Breakfast" },
-    { time: "1:00 PM", task: "Lunch" },
-    { time: "7:00 PM", task: "Dinner" },
-  ];
-
-  const metrics = {
-    weight: 70,
-    goalWeight: 65,
-    height: 175,
-  };
-  const bmi = (metrics.weight / (metrics.height / 100) ** 2).toFixed(1);
-
-  // Fetch name from Firestore
+  // fetch data from firestore
   useEffect(() => {
-    const fetchUserName = async () => {
+    const fetchUserData = async () => {
       try {
-        const userId = auth.currentUser?.uid;
-        if (!userId) return;
-        const docRef = doc(db, "users", userId);
+        const user = auth.currentUser;
+        if (!user) {
+          Alert.alert("Error", "No authenticated user found");
+          return;
+        }
+
+        const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
+
         if (docSnap.exists()) {
-          setUserName(docSnap.data().name || "User");
+          setUserData(docSnap.data());
         } else {
-          setUserName("User");
+          Alert.alert("Error", "User data not found");
         }
       } catch (error) {
-        console.error("Error fetching user name:", error);
-        setUserName("User");
+        console.error("Error fetching user data:", error);
+        Alert.alert("Error", "Try connecting to internet");
       }
     };
-    fetchUserName();
+
+    fetchUserData();
   }, []);
 
-  const toggleAccordion = (key: string) => {
-    setExpanded(expanded === key ? null : key);
+  const toggleExpand = (section: string) => {
+    setExpanded(expanded === section ? null : section);
   };
 
+  if (!userData) {
+    return (
+      <View className="flex-1 items-center justify-center bg-gray-100">
+        <Text className="text-gray-600 text-lg">Loading...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView className="flex-1 bg-white p-6 pt-14">
+    <ScrollView className="flex-1 bg-gray-100 p-4">
       {/* Header */}
-      <Text className="text-xl font-bold mb-6">Profile</Text>
+      <Text className="text-2xl font-bold mb-4">Profile</Text>
 
-      {/* Profile Info */}
-      <View className="flex-row items-center mb-6">
-        <View className="bg-teal-600 p-3 rounded-full">
-          <Ionicons name="person" size={54} color="white" />
-        </View>
-        <View className="ml-4 flex-1">
-          <Text className="text-lg font-semibold">{userName}</Text>
-          <Text className="text-gray-500">{auth.currentUser?.phoneNumber || ""}</Text>
-        </View>
-        <TouchableOpacity>
-          <Ionicons name="pencil" size={24} color="black" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Accordion Items */}
-      {/* Progress Report */}
+      {/* User Info */}
       <TouchableOpacity
-        className="flex-row justify-between items-center bg-gray-100 p-4 rounded-lg mb-3"
-        onPress={() => toggleAccordion("progress")}
+        className="bg-white rounded-2xl p-4 shadow-md mb-2"
+        onPress={() => toggleExpand("info")}
       >
-        <View className="flex-row items-center">
-          <Ionicons name="time-outline" size={20} color="black" />
-          <Text className="ml-3 font-medium">Progress Report</Text>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-lg font-semibold">User Info</Text>
+          <Ionicons
+            name={expanded === "info" ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="gray"
+          />
         </View>
-        <Ionicons
-          name={expanded === "progress" ? "chevron-up" : "chevron-down"}
-          size={20}
-          color="gray"
-        />
+        {expanded === "info" && (
+          <View className="mt-2">
+            <Text>Name: {userData.name}</Text>
+            <Text>Age: {userData.age}</Text>
+            <Text>Gender: {userData.gender}</Text>
+            <Text>Height: {userData.height} cm</Text>
+          </View>
+        )}
       </TouchableOpacity>
-      {expanded === "progress" && (
-        <View className="bg-gray-50 p-4 mb-3 rounded-lg">
-          <Text>Calories eaten today: {caloriesEaten} kcal</Text>
-          <Text>Daily target: {dailyTarget} kcal</Text>
-          <Text>
-            Estimated change this week: {estimatedWeeklyChange.toFixed(2)} kg
-          </Text>
-        </View>
-      )}
 
-      {/* Reminders */}
+      {/* Activity & Goal */}
       <TouchableOpacity
-        className="flex-row justify-between items-center bg-gray-100 p-4 rounded-lg mb-3"
-        onPress={() => toggleAccordion("reminder")}
+        className="bg-white rounded-2xl p-4 shadow-md mb-2"
+        onPress={() => toggleExpand("goal")}
       >
-        <View className="flex-row items-center">
-          <Ionicons name="alarm-outline" size={20} color="black" />
-          <Text className="ml-3 font-medium">Reminders</Text>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-lg font-semibold">Activity & Goal</Text>
+          <Ionicons
+            name={expanded === "goal" ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="gray"
+          />
         </View>
-        <Ionicons
-          name={expanded === "reminder" ? "chevron-up" : "chevron-down"}
-          size={20}
-          color="gray"
-        />
+        {expanded === "goal" && (
+          <View className="mt-2">
+            <Text>Activity: {userData.activity}</Text>
+            <Text>Goal: {userData.goal}</Text>
+          </View>
+        )}
       </TouchableOpacity>
-      {expanded === "reminder" && (
-        <View className="bg-gray-50 p-4 mb-3 rounded-lg">
-          {reminders.map((r, idx) => (
-            <Text key={idx}>
-              {r.time} - {r.task}
+
+      {/* Nutrition */}
+      <TouchableOpacity
+        className="bg-white rounded-2xl p-4 shadow-md mb-2"
+        onPress={() => toggleExpand("nutrition")}
+      >
+        <View className="flex-row justify-between items-center">
+          <Text className="text-lg font-semibold">Nutrition</Text>
+          <Ionicons
+            name={expanded === "nutrition" ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="gray"
+          />
+        </View>
+        {expanded === "nutrition" && (
+          <View className="mt-2">
+            <Text>Calories: {userData.calories}</Text>
+            <Text>Carbs: {userData.carbs} g</Text>
+            <Text>Protein: {userData.protein} g</Text>
+            <Text>Fats: {userData.fats} g</Text>
+            <Text>Fiber: {userData.fiber} g</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Daily Targets */}
+      <TouchableOpacity
+        className="bg-white rounded-2xl p-4 shadow-md mb-2"
+        onPress={() => toggleExpand("targets")}
+      >
+        <View className="flex-row justify-between items-center">
+          <Text className="text-lg font-semibold">Daily Targets</Text>
+          <Ionicons
+            name={expanded === "targets" ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="gray"
+          />
+        </View>
+        {expanded === "targets" && (
+          <View className="mt-2">
+            <Text>
+              Calculated At:{" "}
+              {userData?.dailyTargets?.calculatedAt || "Not available"}
             </Text>
-          ))}
-        </View>
-      )}
-
-      {/* Weight & Body Metrics */}
-      <TouchableOpacity
-        className="flex-row justify-between items-center bg-gray-100 p-4 rounded-lg mb-3"
-        onPress={() => toggleAccordion("metrics")}
-      >
-        <View className="flex-row items-center">
-          <Ionicons name="trending-up-outline" size={20} color="black" />
-          <Text className="ml-3 font-medium">Weight & Body Metrics</Text>
-        </View>
-        <Ionicons
-          name={expanded === "metrics" ? "chevron-up" : "chevron-down"}
-          size={20}
-          color="gray"
-        />
-      </TouchableOpacity>
-      {expanded === "metrics" && (
-        <View className="bg-gray-50 p-4 mb-3 rounded-lg">
-          <Text>Current Weight: {metrics.weight} kg</Text>
-          <Text>Goal Weight: {metrics.goalWeight} kg</Text>
-          <Text>Height: {metrics.height} cm</Text>
-          <Text>BMI: {bmi}</Text>
-        </View>
-      )}
-
-      {/* Health & Help */}
-      <View className="bg-gray-100 p-4 rounded-lg mb-3">
-        <TouchableOpacity className="flex-row items-center mb-4">
-          <Ionicons name="medkit-outline" size={20} color="black" />
-          <Text className="ml-3 text-gray-600">Health and Medical info</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className="flex-row items-center">
-          <Ionicons name="help-circle-outline" size={20} color="black" />
-          <Text className="ml-3 text-gray-600">Help & Support</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Logout */}
-      <TouchableOpacity className="bg-teal-600 py-3 rounded-lg mt-4 items-center">
-        <Text className="text-white font-semibold">Log out</Text>
+          </View>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
-};
-
-export default ProfileScreen;
+}

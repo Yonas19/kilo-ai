@@ -5,7 +5,9 @@ import { db, auth } from '@/constants/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter } from 'expo-router';
-import { getTargetsFromOpenAI } from '@/lib/openai';
+
+import { getTargetsFromGemini as getTargets } from '@/lib/gemini';
+
 import { OnboardingProfile } from '@/lib/nutrition';
 
 const OnboardingScreen = () => {
@@ -64,7 +66,7 @@ const OnboardingScreen = () => {
       }, { merge: true });
 
       // 2) Call OpenAI to compute daily targets (with fallback if needed)
-      const targets = await getTargetsFromOpenAI(form);
+      const targets = await getTargets(form);
 
       // 3) Persist targets into the same doc
       await updateDoc(doc(db, 'users', userId), {

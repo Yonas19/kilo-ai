@@ -1,3 +1,4 @@
+// signup.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { auth } from '@/constants/firebase';
@@ -16,6 +17,7 @@ export default function Signup() {
       Alert.alert('Error', 'Please fill all fields');
       return;
     }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
@@ -25,7 +27,7 @@ export default function Signup() {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       Alert.alert('Success', 'Account created!');
-      router.replace('/onboarding'); // navigate to main app
+      router.replace('/onboarding'); // Navigate to onboarding or main app
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
@@ -35,8 +37,11 @@ export default function Signup() {
 
   return (
     <View className="flex-1 bg-teal-700 justify-center px-6">
-      <Text className="text-white text-3xl font-bold mb-8 text-center">Create Account</Text>
+      <Text className="text-white text-3xl font-bold mb-8 text-center">
+        Create Account
+      </Text>
 
+      {/* Email Input */}
       <TextInput
         value={email}
         onChangeText={setEmail}
@@ -45,6 +50,7 @@ export default function Signup() {
         className="bg-white rounded-xl px-4 py-3 mb-4 text-gray-800"
       />
 
+      {/* Password Input */}
       <TextInput
         value={password}
         onChangeText={setPassword}
@@ -53,6 +59,7 @@ export default function Signup() {
         className="bg-white rounded-xl px-4 py-3 mb-4 text-gray-800"
       />
 
+      {/* Confirm Password Input */}
       <TextInput
         value={confirmPassword}
         onChangeText={setConfirmPassword}
@@ -61,6 +68,7 @@ export default function Signup() {
         className="bg-white rounded-xl px-4 py-3 mb-6 text-gray-800"
       />
 
+      {/* Sign Up Button */}
       <TouchableOpacity
         onPress={handleSignup}
         className="bg-white rounded-xl py-3 mb-4"
@@ -71,6 +79,7 @@ export default function Signup() {
         </Text>
       </TouchableOpacity>
 
+      {/* Navigate to Login */}
       <TouchableOpacity onPress={() => router.push('/login')} className="mt-4">
         <Text className="text-white text-center underline">
           Already have an account? Sign in
