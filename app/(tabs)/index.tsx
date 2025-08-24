@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
@@ -17,15 +16,13 @@ import {
   onSnapshot,
   updateDoc,
   collection,
-  addDoc,
   serverTimestamp,
   query,
   orderBy,
   limit,
-  increment,
 } from 'firebase/firestore';
 import { db, auth } from '@/constants/firebase';
-import { getTargetsFromGemini } from '@/lib/gemini'; // AI target calculation
+import { getTargetsFromGemini } from '@/lib/gemini';
 
 // ---------- Helpers ----------
 function formatDateKey(d = new Date()) {
@@ -35,40 +32,40 @@ function formatDateKey(d = new Date()) {
   return `${y}-${m}-${day}`;
 }
 
-function safeNum(v) {
+function safeNum(v: any) {
   return typeof v === 'number' ? v : 0;
 }
 
-// ---------- OpenAI image analyze (best-effort) ----------
-async function analyzeImageBase64(base64: string) {
-  const OPENAI_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || global?.__OPENAI_KEY__;
-  const prompt = `You are a nutrition assistant. Given an image (base64 truncated), return ONLY valid JSON like:
-{"name":"Plate of rice and chicken","calories":250,"protein_g":12,"carbs_g":30,"fat_g":10,"fiber_g":2}
-Do not include any commentary. Image base64 (prefix): ${base64.slice(0, 300)}`;
-
-  if (!OPENAI_KEY) {
-    console.warn('OpenAI key not found; using fallback estimate');
-    return { name: 'Scanned Food', calories: 250, protein_g: 10, carbs_g: 30, fat_g: 10, fiber_g: 2 };
-  }
+// ---------- Gemini API ----------
+async function analyzeImageWithGemini(base64: string) {
+  const GEMINI_KEY =
+    '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';
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a helpful nutrition assistant that returns ONLY JSON.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.2,
-        max_tokens: 300,
-      }),
-    });
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Analyze this food image. Return JSON only:
+{"name":"food name","calories":123,"protein_g":10,"carbs_g":20,"fat_g":5,"fiber_g":2}`,
+                },
+                { inline_data: { mime_type: 'image/jpeg', data: base64 } },
+              ],
+            },
+          ],
+        }),
+      }
+    );
 
-    if (!res.ok) throw new Error('OpenAI returned error');
-    const json = await res.json();
-    const text = json?.choices?.[0]?.message?.content?.trim();
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
     const match = text?.match(/\{[\s\S]*\}/);
     const parsed = match ? JSON.parse(match[0]) : JSON.parse(text);
 
@@ -81,8 +78,15 @@ Do not include any commentary. Image base64 (prefix): ${base64.slice(0, 300)}`;
       fiber_g: Number(parsed.fiber_g) || 0,
     };
   } catch (err) {
-    console.warn('analyzeImageBase64 failed:', err);
-    return { name: 'Scanned Food', calories: 300, protein_g: 12, carbs_g: 35, fat_g: 12, fiber_g: 3 };
+    console.warn('Gemini failed, fallback:', err);
+    return {
+      name: 'Scanned Food',
+      calories: 250,
+      protein_g: 12,
+      carbs_g: 30,
+      fat_g: 10,
+      fiber_g: 3,
+    };
   }
 }
 
@@ -180,7 +184,7 @@ export default function HomeScreen() {
     fiber: Math.max(goals.fiber - consumed.fiber, 0),
   };
 
-  // Scan flow
+  // Scan flow → goes to Preview
   const onPressScan = useCallback(async () => {
     if (!uid) return Alert.alert('Not signed in');
 
@@ -188,27 +192,23 @@ export default function HomeScreen() {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') return Alert.alert('Camera permission required');
 
-      const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 });
-      if (result.cancelled || !result.base64) return;
+      const result = await ImagePicker.launchCameraAsync({
+        base64: true,
+        quality: 0.7,
+      });
 
+      if (result.canceled || !result.assets?.[0]?.base64) return;
+
+      const photo = result.assets[0];
       setScanning(true);
-      const analysis = await analyzeImageBase64(result.base64);
 
-      const dayKey = formatDateKey();
-      const logsCol = collection(db, 'users', uid, 'logs', dayKey, 'items');
-      await addDoc(logsCol, { ...analysis, createdAt: serverTimestamp() });
-
-      const userRef = doc(db, 'users', uid);
-      await updateDoc(userRef, {
-        'consumed.calories': increment(analysis.calories),
-        'consumed.protein': increment(analysis.protein_g),
-        'consumed.carbs': increment(analysis.carbs_g),
-        'consumed.fats': increment(analysis.fat_g),
-        'consumed.fiber': increment(analysis.fiber_g),
+      // Send to preview screen for edit/save
+      router.push({
+        pathname: '/preview',
+        params: { uri: photo.uri, base64: photo.base64 },
       });
 
       setScanning(false);
-      Alert.alert('Logged', `${analysis.name} • ${analysis.calories} kcal`);
     } catch (err) {
       setScanning(false);
       console.warn('Scan error', err);
@@ -228,12 +228,14 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#f3f6f8' }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        {/* Top card: calories left */}
-        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 18, marginBottom: 14, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
+        {/* Top card */}
+        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 18, marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View>
               <Text style={{ color: '#6b7280', fontSize: 12 }}>Calories left</Text>
-              <Text style={{ fontSize: 28, fontWeight: '800', marginTop: 6 }}>{left.calories} kcal</Text>
+              <Text style={{ fontSize: 28, fontWeight: '800', marginTop: 6 }}>
+                {left.calories} kcal
+              </Text>
             </View>
             <AnimatedCircularProgress
               size={86}
@@ -248,7 +250,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Macro cards */}
+        {/* Macros */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>
           {[
             { key: 'Protein', color: '#EF4444', current: consumed.protein, goal: goals.protein },
@@ -258,7 +260,7 @@ export default function HomeScreen() {
           ].map((m) => {
             const pct = m.goal > 0 ? Math.min((m.current / m.goal) * 100, 100) : 0;
             return (
-              <View key={m.key} style={{ width: '48%', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+              <View key={m.key} style={{ width: '48%', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <AnimatedCircularProgress
                     size={64}
@@ -268,9 +270,9 @@ export default function HomeScreen() {
                     backgroundColor="#f0f2f4"
                     rotation={0}
                   >
-                    {() => <Text style={{ fontWeight: '700', fontSize: 12, textAlign: 'center' }}>{m.current}/{m.goal}g</Text>}
+                    {() => <Text style={{ fontWeight: '700', fontSize: 12 }}>{m.current}/{m.goal}g</Text>}
                   </AnimatedCircularProgress>
-                  <View style={{ marginLeft: 12, flex: 1 }}>
+                  <View style={{ marginLeft: 12 }}>
                     <Text style={{ fontWeight: '800' }}>{m.key}</Text>
                     <Text style={{ color: '#6b7280', marginTop: 6 }}>{Math.max(m.goal - m.current, 0)} left</Text>
                   </View>
@@ -284,11 +286,11 @@ export default function HomeScreen() {
         <View style={{ marginTop: 8 }}>
           <Text style={{ fontWeight: '800', fontSize: 18, marginBottom: 8 }}>Recently logged</Text>
           {todayLogs.length === 0 ? (
-            <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
               <Text style={{ color: '#6b7280' }}>No foods logged yet. Tap + to add a food.</Text>
             </View>
           ) : todayLogs.map((it) => (
-            <View key={it.id} style={{ flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 10, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 }}>
+            <View key={it.id} style={{ flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 10 }}>
               <View style={{ width: 64, height: 64, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                 <Text style={{ color: '#374151', fontWeight: '700' }}>IMG</Text>
               </View>
@@ -308,12 +310,13 @@ export default function HomeScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Floating center-bottom button */}
+      {/* Floating button */}
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 18, alignItems: 'center' }}>
         <TouchableOpacity
-          onPress={onPressScan}
+        
+          onPress={() => router.push("/ai-camera")}
           disabled={scanning}
-          style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center', shadowColor: '#14B8A6', shadowOpacity: 0.25, shadowRadius: 10, elevation: 6 }}
+          style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: '#14B8A6', alignItems: 'center', justifyContent: 'center' }}
         >
           {scanning ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 38, fontWeight: '900' }}>+</Text>}
         </TouchableOpacity>
